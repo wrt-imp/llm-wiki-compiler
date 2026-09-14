@@ -16,7 +16,15 @@ from compiler.parser import (
     parse_file,
 )
 
-REQUIRED_FIELDS = ("id", "title", "source", "format", "content", "metadata")
+REQUIRED_FIELDS = (
+    "id",
+    "title",
+    "source",
+    "format",
+    "content",
+    "sections",
+    "metadata",
+)
 
 
 @pytest.fixture
@@ -44,6 +52,7 @@ def test_every_parser_returns_complete_document_fields(
         assert document.title.strip()
         assert document.source == str(path)
         assert document.content.strip()
+        assert isinstance(document.sections, List)
         assert isinstance(document.metadata, Dict)
 
 
