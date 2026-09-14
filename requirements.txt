@@ -1,0 +1,6 @@
+# Runtime dependency of the Parser stage (PDF parsing).
+pypdf>=6.0
+
+# Test-only: used by tests/fixtures/make_fixtures.py to regenerate the PDF
+# fixtures. Not needed to run the test suite.
+fpdf2>=2.8
