@@ -1,6 +1,10 @@
 # Runtime dependency of the Parser stage (PDF parsing).
 pypdf>=6.0
 
+# Optional: only needed for compiler.llm.openai_client, the real model client.
+# The extraction tests use mock clients and never touch the network.
+openai>=1.40
+
 # Test-only: used by tests/fixtures/make_fixtures.py to regenerate the PDF
 # fixtures. Not needed to run the test suite.
 fpdf2>=2.8
