@@ -13,6 +13,7 @@ from compiler.knowledge import (
     Concept,
     Entity,
     Fact,
+    KnowledgeBase,
     KnowledgeIR,
     Relation,
     SourceRef,
@@ -258,3 +259,39 @@ class ScriptedJudge:
     @property
     def call_names(self) -> List[Tuple[str, str, str]]:
         return list(self.calls)
+
+
+# ----------------------------------------------------------------------
+# KnowledgeBase helpers (Wiki Generator tests)
+# ----------------------------------------------------------------------
+def make_kb(
+    *,
+    entities: Tuple[Entity, ...] = (),
+    concepts: Tuple[Concept, ...] = (),
+    facts: Tuple[Fact, ...] = (),
+    relations: Tuple[Relation, ...] = (),
+    documents: Tuple[Dict[str, Any], ...] = (),
+    metadata: Optional[Dict[str, Any]] = None,
+) -> KnowledgeBase:
+    """A unified KnowledgeBase, as Semantic Merge would produce it."""
+
+    return KnowledgeBase(
+        entities=list(entities),
+        concepts=list(concepts),
+        facts=list(facts),
+        relations=list(relations),
+        documents=[dict(document) for document in documents],
+        metadata=dict(metadata or {}),
+    )
+
+
+def document_info(document_id: str, **overrides: Any) -> Dict[str, Any]:
+    """One ``KnowledgeBase.documents`` entry."""
+
+    info = {
+        "id": document_id,
+        "title": f"title of {document_id}",
+        "source": f"{document_id}.md",
+    }
+    info.update(overrides)
+    return info
