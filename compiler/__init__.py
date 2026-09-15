@@ -7,9 +7,11 @@ Implemented stages:
 3. ``compiler.extraction`` - ``Document`` -> ``Knowledge IR`` via an LLM
    (with ``compiler.llm`` providing the model client and ``compiler.knowledge``
    defining the IR)
+4. ``compiler.merge`` - ``Knowledge IR``s -> one ``KnowledgeBase``
+   (Semantic Merge: normalize, candidate matching, LLM judge, merge)
 
-Semantic merge, wiki generation, link resolution, search, graph and lint are
-intentionally not implemented yet.
+Wiki generation, link resolution, search, graph and lint are intentionally not
+implemented yet.
 """
 
 __version__ = "0.1.0"

@@ -11,6 +11,7 @@ Cross-document merging, wiki generation, linking, search and graph work are not
 implemented yet.
 """
 
+from .base import KnowledgeBase
 from .model import (
     ENTITY_TYPES,
     ENTITY_TYPE_ORGANIZATION,
@@ -45,6 +46,7 @@ __all__ = [
     "KIND_FACT",
     "KIND_RELATION",
     "KnowledgeIR",
+    "KnowledgeBase",
     "Relation",
     "SourceRef",
     "make_knowledge_id",

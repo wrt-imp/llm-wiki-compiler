@@ -9,6 +9,16 @@ from __future__ import annotations
 import json
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+from compiler.knowledge import (
+    Concept,
+    Entity,
+    Fact,
+    KnowledgeIR,
+    Relation,
+    SourceRef,
+)
+from compiler.merge import JudgeVerdict
+
 Response = Union[str, Exception]
 
 
@@ -112,3 +122,139 @@ def empty_payload() -> Dict[str, Any]:
     """The answer for a document with no extractable knowledge."""
 
     return {"entities": [], "concepts": [], "facts": [], "relations": []}
+
+
+# ----------------------------------------------------------------------
+# Knowledge IR helpers (Semantic Merge tests)
+# ----------------------------------------------------------------------
+def src_ref(
+    document_id: str,
+    *,
+    section_id: Optional[str] = None,
+    page_number: Optional[int] = None,
+    quote: str = "原文片段",
+) -> SourceRef:
+    """One source reference on an extracted item."""
+
+    return SourceRef(
+        document_id=document_id,
+        section_id=section_id,
+        page_number=page_number,
+        quote=quote,
+    )
+
+
+def entity(
+    name: str,
+    *,
+    type: str = "other",
+    description: str = "",
+    aliases: Tuple[str, ...] = (),
+    sources: Tuple[SourceRef, ...] = (),
+) -> Entity:
+    return Entity(
+        name=name,
+        type=type,
+        description=description,
+        aliases=list(aliases),
+        sources=list(sources),
+    )
+
+
+def concept(
+    name: str,
+    *,
+    description: str = "",
+    aliases: Tuple[str, ...] = (),
+    sources: Tuple[SourceRef, ...] = (),
+) -> Concept:
+    return Concept(
+        name=name,
+        description=description,
+        aliases=list(aliases),
+        sources=list(sources),
+    )
+
+
+def fact(
+    statement: str,
+    *,
+    subject: str = "",
+    predicate: str = "",
+    object: str = "",
+    sources: Tuple[SourceRef, ...] = (),
+) -> Fact:
+    return Fact(
+        statement=statement,
+        subject=subject,
+        predicate=predicate,
+        object=object,
+        sources=list(sources),
+    )
+
+
+def relation(
+    source_name: str,
+    target_name: str,
+    *,
+    type: str = "",
+    description: str = "",
+    source_id: Optional[str] = None,
+    target_id: Optional[str] = None,
+    sources: Tuple[SourceRef, ...] = (),
+) -> Relation:
+    return Relation(
+        source=source_name,
+        target=target_name,
+        type=type,
+        description=description,
+        source_id=source_id,
+        target_id=target_id,
+        sources=list(sources),
+    )
+
+
+def make_ir(
+    document_id: str,
+    *,
+    title: Optional[str] = None,
+    source: Optional[str] = None,
+    entities: Tuple[Entity, ...] = (),
+    concepts: Tuple[Concept, ...] = (),
+    facts: Tuple[Fact, ...] = (),
+    relations: Tuple[Relation, ...] = (),
+) -> KnowledgeIR:
+    """A per document Knowledge IR, as the extraction stage would produce it."""
+
+    return KnowledgeIR(
+        document_id=document_id,
+        document_title=title if title is not None else f"title of {document_id}",
+        source=source if source is not None else f"{document_id}.md",
+        entities=list(entities),
+        concepts=list(concepts),
+        facts=list(facts),
+        relations=list(relations),
+    )
+
+
+class ScriptedJudge:
+    """A mock judge that returns queued verdicts and records the pairs."""
+
+    def __init__(self, *verdicts: Union[JudgeVerdict, Exception]) -> None:
+        self._verdicts: List[Union[JudgeVerdict, Exception]] = list(verdicts)
+        self.calls: List[Tuple[str, str, str]] = []
+        self.model = "scripted-judge"
+        self.prompt_version = "test"
+
+    def judge(self, kind: str, left: Any, right: Any) -> JudgeVerdict:
+        self.calls.append((kind, left.name, right.name))
+        if not self._verdicts:
+            raise AssertionError("ScriptedJudge ran out of scripted verdicts")
+        verdict = self._verdicts.pop(0)
+        if isinstance(verdict, Exception):
+            raise verdict
+        return verdict
+
+    @property
+    def call_names(self) -> List[Tuple[str, str, str]]:
+        return list(self.calls)
