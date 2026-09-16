@@ -15,8 +15,10 @@ Implemented stages:
    (Link Resolver: relative markdown links, markdown aware, no dead links)
 7. ``compiler.search`` - wiki directory -> keyword search
    (Search: markdown index, deterministic ranking, snippets, stdlib only)
+8. ``compiler.graph`` - ``KnowledgeBase`` -> ``Graph``
+   (Graph: nodes for entities/concepts, edges for relations and complete facts)
 
-Graph and lint are intentionally not implemented yet.
+Lint is intentionally not implemented yet.
 """
 
 __version__ = "0.1.0"
