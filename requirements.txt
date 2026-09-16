@@ -1,6 +1,11 @@
 # Runtime dependency of the Parser stage (PDF parsing).
 pypdf>=6.0
 
+# Encoding detection for Chinese sources (GBK / Big5). The parser still works
+# without it (strict GB18030/Big5 plus a lossy fallback), but detection is
+# noticeably better - a short GBK file is otherwise mistaken for cp949.
+charset-normalizer>=3.0
+
 # Optional: only needed for compiler.llm.openai_client, the real model client.
 # The extraction tests use mock clients and never touch the network.
 openai>=1.40
