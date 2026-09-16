@@ -10,6 +10,11 @@ charset-normalizer>=3.0
 # The extraction tests use mock clients and never touch the network.
 openai>=1.40
 
+# Optional: only needed for the Redis persistence features
+# (compiler.persistence.RedisStore, --redis-load / --redis-save). The startup
+# health check works without it, because it calls the redis-* CLI tools.
+redis>=5.0
+
 # Test-only: used by tests/fixtures/make_fixtures.py to regenerate the PDF
 # fixtures. Not needed to run the test suite.
 fpdf2>=2.8

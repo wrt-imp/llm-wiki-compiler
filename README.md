@@ -13,6 +13,7 @@ example.lw → Mermaid Parser → Parsed Model → Adapter ───────
 - **文档知识入口**：`PDF / Markdown / TXT` 经解析、结构化、大模型抽取、语义合并，得到统一的 `KnowledgeBase`。
 - **图语言入口**：`.lw` 文件就是 **Mermaid 语法**（不是自定义语法），解析后进入同一个 `Graph`。
 - **产物**：带来源引用的 Markdown Wiki、页面内部链接、关键词搜索索引、内存知识图、质量检查（Lint）报告、本地 Web 图浏览器。
+- **可选持久化**：Redis 以 **RDB + AOF 混合**方式保存运行时数据；AOF 损坏时自动隔离并回退 RDB，**不会**让服务起不来（见 [`redis/README.md`](redis/README.md)）。
 
 ## 目录
 
@@ -20,6 +21,7 @@ example.lw → Mermaid Parser → Parsed Model → Adapter ───────
 - [CLI 参考](#cli-参考)
 - [Web UI](#web-ui)
 - [`.lw`：用 Mermaid 描述图](#lw用-mermaid-描述图)
+- [Redis 持久化（可选）](#redis-持久化可选)
 - [作为库使用](#作为库使用)
 - [架构](#架构)
 - [设计原则](#设计原则)
@@ -73,10 +75,10 @@ python -m compiler --graph-json graph.json # Graph.to_dict() 的 JSON
 ### 3. 跑测试
 
 ```powershell
-python -m pytest -q        # 539 passed, 1 skipped
+python -m pytest -q        # 586 passed, 2 skipped
 ```
 
-（1 条 skip 是需要真实 `OPENAI_API_KEY` 的集成测试，`tests/test_extraction_live.py`。）
+（2 条 skip 分别是需要真实 `OPENAI_API_KEY` 的抽取测试和需要本机 Redis 的持久化测试。）
 
 ## CLI 参考
 
@@ -97,6 +99,11 @@ usage: compiler [-h] [--kb FILE] [--graph-json FILE] [--host HOST]
 | `--check` | 只解析并报告节点/边数量，不起服务 |
 | `--json` | 把图打印成 JSON 后退出（可用于脚本） |
 | `-q, --quiet` | 只输出错误 |
+| `--redis-check` | 检查 Redis 的 RDB/AOF：损坏则隔离并准备 RDB 回退；不启动 Redis、不因持久化问题崩溃 |
+| `--redis-load KEY` | 从 Redis 读取 `KnowledgeBase`（替代文件输入） |
+| `--redis-save KEY` | 载入后把 Graph（以及 KnowledgeBase）写入 Redis |
+| `--redis-data-dir DIR` | Redis 数据目录，默认 `data/redis` |
+| `--redis-strict` | 配合 `--redis-check`：无法验证持久化时退出码 2 |
 
 三个输入（`source` / `--kb` / `--graph-json`）必须**且只能**给一个。出错时给出明确信息并返回退出码 2（参数/文件/语法错误）或 3（端口占用等服务器错误）：
 
@@ -143,6 +150,37 @@ graph TD
 **明确拒绝并给出位置**：`subgraph`、`style`、`classDef`、`click`、`linkStyle`、`direction`、`%%{...}%%`、`---`/`-.->`/`==>` 等其它连接符、`()`/`{}` 等其它节点形状，以及 sequence/class/state/er/gantt/pie 等其它图类型。
 
 **ID 与 Label 分离**：`A[解析器]` 里 `A` 是节点身份（`Node.id`），`解析器` 是显示名（`Node.title`）。边的 `type` 直接取关系标签；没有标签就是空字符串，**不会臆造** `related`。
+
+## Redis 持久化（可选）
+
+Redis 在这里是**可选的运行时存储**：把编译产物（`KnowledgeBase` / `Graph`）存进去，让下一次运行不必重新解析或再调用大模型；它不替代流水线写出的文件。
+
+```text
+scripts/redis-persistence.sh        # 管进程与文件（WSL / systemd）
+        │  RDB 检查 → AOF 检查（redis-check-aof）
+        │  AOF 损坏 → 改名隔离到 data/redis/corrupted/（绝不删除）
+        │            → 复制一份 --fix 并复验 → 成功则使用
+        │            → 否则回退最新 RDB，并警告"之后的写入可能丢失"
+        ▼
+Redis（appendonly yes / appendfsync everysec / aof-use-rdb-preamble yes）
+        ▲
+compiler/persistence/               # 应用侧：自检 + 日志 + 永不崩溃
+        └─ python -m compiler --redis-check
+```
+
+```powershell
+# WSL 里启动受管 Redis（RDB + AOF）
+bash scripts/redis-persistence.sh
+
+# 只做检查与恢复准备（不启动 Redis，可随时运行）
+python -m compiler --redis-check
+
+# 把编译结果存进 Redis / 从 Redis 读出来
+python -m compiler --kb kb.json --redis-save my-key --check
+python -m compiler --redis-load my-key --check
+```
+
+完整说明、日志样例和"如何人为制造 AOF 损坏来验证不会崩"在 [`redis/README.md`](redis/README.md)。
 
 ## 作为库使用
 
@@ -254,11 +292,14 @@ compiler/
 │   ├── graph/        # Graph
 │   ├── lint/         # Lint
 │   ├── lw/           # .lw = Mermaid 图源（解析 + 适配）
+│   ├── persistence/  # Redis RDB + AOF 自检、隔离、回退、RedisStore
 │   ├── web/          # 本地 Web 服务与 UI（static/）
 │   ├── cli.py        # 命令行
 │   └── __main__.py   # python -m compiler
 ├── examples/example.lw
-├── tests/            # 539 passed, 1 skipped
+├── redis/            # redis.conf + 持久化说明
+├── scripts/          # redis-persistence.sh / .ps1
+├── tests/            # 586 passed, 2 skipped
 └── requirements.txt
 ```
 
@@ -271,11 +312,13 @@ compiler/
 - `.lw` 只支持 Mermaid 的 Graph 子集，其余语法明确报错；没有热更新（改文件后重新运行命令）。
 - Web UI 的图形库走 CDN（离线自动降级为文本列表）。
 - 编码检测**优先中文编码**（UTF-8 / GB18030 / Big5）；其它旧编码请显式传 `encoding=`。
+- Redis 持久化需要本机/WSL 里有 `redis-server` 与 `redis-check-aof`；`tests/persistence/test_redis_live.py` 在没有 Redis 时会自动跳过。
 
 ## 路线图
 
 - 文档流水线的 CLI（`python -m compiler notes.md --wiki --serve`）
 - `.lw` 与知识图谱的合并视图（两者本就是同一种 `Graph`）
+- 在应用启动流程中接入 `PersistenceManager.ensure()` 的自动报告（当前由 `--redis-check` 显式触发）
 - Web UI 热更新、导出 SVG/PNG、按 kind 上色
 - 更多 Mermaid 语法（`subgraph`、更多形状、`click`、样式）
 - 长文档分块抽取与跨块合并

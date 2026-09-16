@@ -9,3 +9,6 @@ __pycache__/
 .venv/
 venv/
 env/
+
+# Runtime data: Redis snapshots, AOF files and quarantined corrupted files
+data/
