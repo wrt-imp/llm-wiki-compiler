@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LLM Wiki Compiler — Graph</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <h1>LLM Wiki Compiler</h1>
+  <span id="source"></span>
+  <input id="search" type="search" placeholder="Search nodes (id or label)…" autocomplete="off">
+</header>
+<main>
+  <div id="cy"></div>
+  <aside id="info">
+    <h2>Selection</h2>
+    <div id="info-body">Click a node to see its details.</div>
+  </aside>
+</main>
+<footer><span id="stats">loading…</span></footer>
+<div id="banner" hidden></div>
+<script src="https://cdn.jsdelivr.net/npm/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

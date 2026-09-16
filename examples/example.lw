@@ -1,0 +1,10 @@
+%% Example .lw graph source for the LLM Wiki Compiler.
+%% The file is plain Mermaid: graph/flowchart + nodes + edges + edge labels.
+graph TD
+
+    Parser[解析器]
+    DocumentModel[文档模型]
+    AST[抽象语法树]
+
+    Parser -->|produces| DocumentModel
+    DocumentModel -->|contains| AST

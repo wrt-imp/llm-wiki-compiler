@@ -22,6 +22,14 @@ Implemented stages:
 
 That is the whole pipeline: parse, structure, extract, merge, generate, link,
 search, graph and lint.
+
+There is a second entry point as well: ``.lw`` files are Mermaid graph sources
+that compile straight into the same ``Graph`` (no Knowledge IR involved)::
+
+    python -m compiler examples/example.lw      # graph + local web UI
+
+See ``compiler.lw`` for the parsing and adapter layer and ``compiler.web`` for
+the browser UI.
 """
 
 __version__ = "0.1.0"

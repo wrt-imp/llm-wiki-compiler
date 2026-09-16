@@ -1,0 +1,102 @@
+:root {
+  --bg: #12151c;
+  --panel: #1b202b;
+  --panel-2: #232936;
+  --line: #2f3746;
+  --text: #e8ecf3;
+  --muted: #98a3b6;
+  --accent: #5b8cff;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 18px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+
+header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+header #source { color: var(--muted); font-size: 13px; flex: 1; }
+
+input[type="search"] {
+  width: 320px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 13px;
+}
+
+input[type="search"]:focus { outline: 1px solid var(--accent); }
+
+main { flex: 1; display: flex; min-height: 0; }
+
+#cy {
+  flex: 1;
+  min-width: 0;
+  background: radial-gradient(circle at 30% 20%, #1a2030, var(--bg));
+}
+
+aside {
+  width: 320px;
+  padding: 14px 16px;
+  background: var(--panel);
+  border-left: 1px solid var(--line);
+  overflow: auto;
+}
+
+aside h2 {
+  font-size: 12px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 14px 0 6px;
+}
+
+aside h3 { font-size: 15px; margin: 0 0 8px; }
+aside dl { margin: 0 0 12px; font-size: 13px; }
+aside dt { color: var(--muted); }
+aside dd { margin: 0 0 6px; }
+aside ul { margin: 4px 0 12px; padding-left: 18px; font-size: 13px; }
+aside code { background: var(--panel-2); padding: 1px 4px; border-radius: 4px; }
+
+footer {
+  padding: 8px 18px;
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+#banner {
+  position: absolute;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #4a2b2b;
+  border: 1px solid #7a3b3b;
+  color: #ffd7d7;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+#banner[hidden] { display: none; }
+
+.fallback { padding: 18px; font-size: 13px; }
+.fallback h3 { margin: 12px 0 6px; }
+.fallback li { margin: 2px 0; }
