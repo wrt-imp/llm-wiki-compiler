@@ -21,6 +21,7 @@ from compiler.knowledge import (
 )
 from compiler.merge import JudgeVerdict
 from compiler.wiki import WikiBuild, generate_wiki
+from compiler.linker import LinkResult, resolve_wiki
 
 Response = Union[str, Exception]
 
@@ -369,3 +370,75 @@ def write_wiki_page(root: Path, relative: str, text: str) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8", newline="\n")
     return path
+
+
+# ----------------------------------------------------------------------
+# Lint helpers
+# ----------------------------------------------------------------------
+def clean_kb() -> KnowledgeBase:
+    """A knowledge base where every page is linked and every item has a source."""
+
+    return make_kb(
+        entities=(
+            entity(
+                "解析器",
+                type="system",
+                description="把源文件统一成 Document 的组件",
+                aliases=("Parser",),
+                sources=(src_ref("docA", section_id="docA#1", quote="解析器"),),
+            ),
+            entity(
+                "知识图谱编译器",
+                type="system",
+                description="把文档编译成 wiki 的系统",
+                sources=(src_ref("docA", section_id="docA#2", quote="知识图谱编译器"),),
+            ),
+        ),
+        concepts=(
+            concept(
+                "文档模型",
+                description="解析器的输出结构",
+                aliases=("Document Model",),
+                sources=(src_ref("docA", section_id="docA#3", quote="文档模型"),),
+            ),
+        ),
+        facts=(
+            fact(
+                "解析器输出文档模型",
+                subject="解析器",
+                predicate="输出",
+                object="文档模型",
+                sources=(src_ref("docA", section_id="docA#1", quote="解析器输出文档模型"),),
+            ),
+        ),
+        relations=(
+            relation(
+                "解析器",
+                "文档模型",
+                type="produces",
+                sources=(src_ref("docA", section_id="docA#1", quote="解析器产出文档模型"),),
+            ),
+            relation(
+                "知识图谱编译器",
+                "解析器",
+                type="uses",
+                sources=(src_ref("docA", section_id="docA#2", quote="知识图谱编译器使用解析器"),),
+            ),
+            relation(
+                "文档模型",
+                "知识图谱编译器",
+                type="describes",
+                sources=(src_ref("docA", section_id="docA#3", quote="文档模型描述知识图谱编译器"),),
+            ),
+        ),
+        documents=(document_info("docA"),),
+    )
+
+
+def clean_wiki(tmp_path: Path) -> Tuple[KnowledgeBase, WikiBuild, LinkResult]:
+    """Generate and link the clean sample wiki."""
+
+    knowledge_base = clean_kb()
+    build = generate_wiki(knowledge_base, tmp_path / "wiki")
+    result = resolve_wiki(build)
+    return knowledge_base, build, result

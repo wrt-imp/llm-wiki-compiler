@@ -17,8 +17,11 @@ Implemented stages:
    (Search: markdown index, deterministic ranking, snippets, stdlib only)
 8. ``compiler.graph`` - ``KnowledgeBase`` -> ``Graph``
    (Graph: nodes for entities/concepts, edges for relations and complete facts)
+9. ``compiler.lint`` - compiled results -> ``LintResult``
+   (Lint: deterministic, read only quality and structure checks)
 
-Lint is intentionally not implemented yet.
+That is the whole pipeline: parse, structure, extract, merge, generate, link,
+search, graph and lint.
 """
 
 __version__ = "0.1.0"
