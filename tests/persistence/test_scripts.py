@@ -46,6 +46,7 @@ def test_corrupt_aof_is_quarantined_and_rdb_is_used(tmp_path: Path) -> None:
     result = run_script(data, bin_dir=bin_dir)
 
     assert result.returncode == 0, result.stdout + result.stderr
+    output = result.stdout + result.stderr
     for expected in (
         "Redis AOF is corrupted.",
         "Original AOF has been moved to",
@@ -53,7 +54,7 @@ def test_corrupt_aof_is_quarantined_and_rdb_is_used(tmp_path: Path) -> None:
         "Data written after the latest RDB snapshot may be lost.",
         "Redis started successfully using RDB",
     ):
-        assert expected in result.stdout
+        assert expected in output
     quarantined = list((data / "corrupted").iterdir())
     assert len(quarantined) == 1
     assert quarantined[0].read_bytes() == b"GARBAGE-AOF"
@@ -69,7 +70,7 @@ def test_successful_repair_keeps_the_original(tmp_path: Path) -> None:
     result = run_script(data, bin_dir=bin_dir)
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "Repaired AOF verified" in result.stdout
+    assert "Repaired AOF verified" in result.stdout + result.stderr
     quarantined = list((data / "corrupted").iterdir())
     assert quarantined and quarantined[0].read_bytes() == b"BROKEN-AOF"
     assert (data / "appendonly.aof").exists()
@@ -84,8 +85,9 @@ def test_missing_check_tool_does_not_block_startup(tmp_path: Path) -> None:
     result = run_script(data, bin_dir=bin_dir)
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "redis-check-aof not found" in result.stdout
-    assert "Redis started successfully" in result.stdout
+    output = result.stdout + result.stderr
+    assert "redis-check-aof not found" in output
+    assert "Redis started successfully" in output
 
 
 def test_running_twice_is_idempotent(tmp_path: Path) -> None:

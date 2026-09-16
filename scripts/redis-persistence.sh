@@ -28,7 +28,9 @@ PID_FILE="$DATA_DIR/redis.pid"
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 
 log_info() { printf 'INFO    %s\n' "$*"; }
-log_warn() { printf 'WARNING %s\n' "$*"; }
+# Warnings and errors go to stderr so that the status strings captured with
+# $(...) stay clean.
+log_warn() { printf 'WARNING %s\n' "$*" >&2; }
 log_error() { printf 'ERROR   %s\n' "$*" >&2; }
 
 have() { command -v "$1" >/dev/null 2>&1; }
