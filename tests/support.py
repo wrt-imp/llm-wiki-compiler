@@ -7,6 +7,7 @@ the ``tests`` directory on ``sys.path``). Nothing here touches the network.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from compiler.knowledge import (
@@ -19,6 +20,7 @@ from compiler.knowledge import (
     SourceRef,
 )
 from compiler.merge import JudgeVerdict
+from compiler.wiki import WikiBuild, generate_wiki
 
 Response = Union[str, Exception]
 
@@ -295,3 +297,66 @@ def document_info(document_id: str, **overrides: Any) -> Dict[str, Any]:
     }
     info.update(overrides)
     return info
+
+
+# ----------------------------------------------------------------------
+# Wiki helpers (Link Resolver tests)
+# ----------------------------------------------------------------------
+def wiki_kb() -> KnowledgeBase:
+    """A small knowledge base whose prose mentions other knowledge objects."""
+
+    return make_kb(
+        entities=(
+            entity(
+                "解析器",
+                type="system",
+                description="把源文件统一成 Document 的组件",
+                aliases=("Parser",),
+                sources=(
+                    src_ref("docA", section_id="docA#1", quote="解析器把 PDF 统一成 Document"),
+                ),
+            ),
+            entity(
+                "知识图谱编译器",
+                type="system",
+                description="使用解析器把文档编译成 wiki 的系统",
+                sources=(src_ref("docA", section_id="docA#2", quote="知识图谱编译器"),),
+            ),
+        ),
+        concepts=(
+            concept(
+                "文档模型",
+                description="解析器的输出结构",
+                aliases=("Document Model",),
+                sources=(src_ref("docA", section_id="docA#3", quote="文档模型"),),
+            ),
+        ),
+        facts=(
+            fact(
+                "解析器输出文档模型",
+                subject="解析器",
+                object="文档模型",
+                sources=(src_ref("docA", section_id="docA#1", quote="解析器输出文档模型"),),
+            ),
+            fact("知识图谱编译器使用解析器", subject="知识图谱编译器", object="解析器"),
+        ),
+        relations=(
+            relation(
+                "解析器",
+                "文档模型",
+                type="produces",
+                sources=(src_ref("docA", section_id="docA#1", quote="解析器产出文档模型"),),
+            ),
+        ),
+        documents=(document_info("docA"),),
+    )
+
+
+def build_sample_wiki(
+    tmp_path: Path, kb: Optional[KnowledgeBase] = None, **options: Any
+) -> WikiBuild:
+    """Generate the sample wiki into ``tmp_path/wiki``."""
+
+    return generate_wiki(
+        kb if kb is not None else wiki_kb(), tmp_path / "wiki", **options
+    )

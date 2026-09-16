@@ -11,8 +11,10 @@ Implemented stages:
    (Semantic Merge: normalize, candidate matching, LLM judge, merge)
 5. ``compiler.wiki`` - ``KnowledgeBase`` -> Markdown wiki pages
    (Wiki Generator: deterministic rendering, no links, no LLM)
+6. ``compiler.linker`` - ``WikiBuild`` -> linked wiki
+   (Link Resolver: relative markdown links, markdown aware, no dead links)
 
-Link resolution, search, graph and lint are intentionally not implemented yet.
+Search, graph and lint are intentionally not implemented yet.
 """
 
 __version__ = "0.1.0"
