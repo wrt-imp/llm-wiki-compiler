@@ -51,6 +51,18 @@ def test_parses_gbk_chinese_txt(text_file: Callable[..., Path]) -> None:
     assert document.metadata["had_decoding_errors"] is False
 
 
+def test_parses_short_gbk_txt(text_file: Callable[..., Path]) -> None:
+    """Regression: short GBK files used to be decoded as cp949."""
+
+    text = "Parser 把源文件转换成文档模型。\n"
+    path = text_file("short_gbk.txt", text, encoding="gbk")
+
+    document = TxtParser().parse(path)
+
+    assert document.content == text
+    assert document.metadata["encoding"] in {"gbk", "gb18030"}
+
+
 def test_parses_utf8_bom_txt(text_file: Callable[..., Path]) -> None:
     path = text_file("bom.txt", "带 BOM 的文本\n", encoding="utf-8-sig")
 
