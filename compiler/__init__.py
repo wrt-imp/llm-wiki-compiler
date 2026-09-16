@@ -13,8 +13,10 @@ Implemented stages:
    (Wiki Generator: deterministic rendering, no links, no LLM)
 6. ``compiler.linker`` - ``WikiBuild`` -> linked wiki
    (Link Resolver: relative markdown links, markdown aware, no dead links)
+7. ``compiler.search`` - wiki directory -> keyword search
+   (Search: markdown index, deterministic ranking, snippets, stdlib only)
 
-Search, graph and lint are intentionally not implemented yet.
+Graph and lint are intentionally not implemented yet.
 """
 
 __version__ = "0.1.0"

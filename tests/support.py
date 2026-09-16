@@ -360,3 +360,12 @@ def build_sample_wiki(
     return generate_wiki(
         kb if kb is not None else wiki_kb(), tmp_path / "wiki", **options
     )
+
+
+def write_wiki_page(root: Path, relative: str, text: str) -> Path:
+    """Write a hand made wiki page (used to test readers and indexers)."""
+
+    path = root / relative
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8", newline="\n")
+    return path
