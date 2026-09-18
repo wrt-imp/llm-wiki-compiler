@@ -17,6 +17,7 @@ from compiler.web import (
     graph_payload,
     serve_graph,
 )
+from compiler.web.server import static_file
 
 SOURCE = "graph TD\n    Parser[解析器] -->|produces| DocumentModel[文档模型]\n"
 
@@ -84,6 +85,39 @@ def test_static_assets_are_served(server_url) -> None:
     assert js_status == 200 and "javascript" in js_type
     assert b"cytoscape" in js_body
     assert css_status == 200 and "css" in css_type
+
+
+def test_vendored_graph_libraries_are_served(server_url) -> None:
+    """The page must not depend on a CDN: the libraries live in static/vendor/."""
+
+    _, url = server_url
+
+    for name, needle in (
+        ("cytoscape.min.js", b"cytoscape"),
+        ("dagre.min.js", b"dagre"),
+        ("cytoscape-dagre.js", b"cytoscapeDagre"),
+    ):
+        status, content_type, body = fetch(f"{url}/static/vendor/{name}")
+        assert status == 200, name
+        assert "javascript" in content_type, name
+        assert needle in body, name
+
+
+def test_static_file_stays_inside_the_static_directory() -> None:
+    assert static_file("/static/app.js") is not None
+    assert static_file("/static/vendor/cytoscape.min.js") is not None
+
+    for path in (
+        "/static/",
+        "/static",
+        "/static/nope.js",
+        "/static/../server.py",
+        "/static/%2e%2e/server.py",
+        "/static/vendor/../../server.py",
+        "/api/graph",
+        "/",
+    ):
+        assert static_file(path) is None, path
 
 
 def test_unknown_path_returns_404(server_url) -> None:

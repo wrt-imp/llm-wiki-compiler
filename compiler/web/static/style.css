@@ -44,6 +44,18 @@ input[type="search"] {
 
 input[type="search"]:focus { outline: 1px solid var(--accent); }
 
+button {
+  padding: 7px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+button:hover { border-color: var(--accent); }
+
 main { flex: 1; display: flex; min-height: 0; }
 
 #cy {
@@ -75,12 +87,17 @@ aside ul { margin: 4px 0 12px; padding-left: 18px; font-size: 13px; }
 aside code { background: var(--panel-2); padding: 1px 4px; border-radius: 4px; }
 
 footer {
+  display: flex;
+  align-items: center;
   padding: 8px 18px;
   background: var(--panel);
   border-top: 1px solid var(--line);
   color: var(--muted);
   font-size: 13px;
 }
+
+#saved { margin-left: 18px; }
+#saved.error { color: #ff9d9d; }
 
 #banner {
   position: absolute;

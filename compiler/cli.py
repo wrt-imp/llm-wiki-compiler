@@ -3,7 +3,8 @@
 Three kinds of input are supported: a ``.lw`` (Mermaid) graph source, a
 ``KnowledgeBase`` JSON file, or a ``Graph`` JSON file. The ``--redis-*`` options
 add the optional Redis persistence features (RDB + AOF): a startup health check
-and loading/storing artefacts.
+and loading/storing artefacts. The web UI always persists the layout the user
+arranged (node positions, zoom/pan, search) unless ``--no-layout`` is given.
 """
 
 from __future__ import annotations
@@ -20,8 +21,10 @@ from .knowledge import KnowledgeBase
 from .lw import LWError, load_lw_file, to_graph
 from .persistence import PersistenceError, PersistenceManager, RedisStore
 from .web import (
+    DEFAULT_LAYOUT_DIR,
     DEFAULT_HOST,
     DEFAULT_PORT,
+    LayoutStore,
     WebServerError,
     graph_payload,
     serve_graph,
@@ -92,6 +95,22 @@ def build_parser() -> argparse.ArgumentParser:
         "--json", action="store_true", help="print the graph as JSON and exit"
     )
     parser.add_argument("-q", "--quiet", action="store_true", help="only print errors")
+
+    web = parser.add_argument_group("web UI")
+    web.add_argument(
+        "--layout-dir",
+        default=DEFAULT_LAYOUT_DIR,
+        metavar="DIR",
+        help=(
+            "where the web UI saves the layout you arrange "
+            f"(default {DEFAULT_LAYOUT_DIR})"
+        ),
+    )
+    web.add_argument(
+        "--no-layout",
+        action="store_true",
+        help="do not save the web UI layout between runs",
+    )
 
     redis = parser.add_argument_group("redis persistence")
     redis.add_argument(
@@ -182,11 +201,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print("Building Graph...")
         print("Starting Web Server...")
     try:
+        layout = None if args.no_layout else LayoutStore.for_graph(args.layout_dir, graph)
         serve_graph(
             graph,
             host=args.host,
             port=args.port,
             open_browser=not args.no_browser,
+            layout=layout,
         )
     except WebServerError as error:
         print(f"error: {error}", file=sys.stderr)

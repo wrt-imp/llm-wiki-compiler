@@ -13,7 +13,7 @@ example.lw → Mermaid Parser → Parsed Model → Adapter ───────
 - **文档知识入口**：`PDF / Markdown / TXT` 经解析、结构化、大模型抽取、语义合并，得到统一的 `KnowledgeBase`。
 - **图语言入口**：`.lw` 文件就是 **Mermaid 语法**（不是自定义语法），解析后进入同一个 `Graph`。
 - **产物**：带来源引用的 Markdown Wiki、页面内部链接、关键词搜索索引、内存知识图、质量检查（Lint）报告、本地 Web 图浏览器。
-- **可选持久化**：Redis 以 **RDB + AOF 混合**方式保存运行时数据；AOF 损坏时自动隔离并回退 RDB，**不会**让服务起不来（见 [`redis/README.md`](redis/README.md)）。
+- **两类持久化**：Web UI 把你摆好的节点位置、缩放平移和搜索词存进 `data/web-layout/`，关掉页面甚至关掉服务再打开，看到的还是你离开时的样子（`--no-layout` 可关闭）；Redis 以 **RDB + AOF 混合**方式保存运行时数据，AOF 损坏时自动隔离并回退 RDB，**不会**让服务起不来（见 [`redis/README.md`](redis/README.md)）。
 
 ## 目录
 
@@ -65,6 +65,8 @@ http://127.0.0.1:63333
 
 浏览器打开 `http://127.0.0.1:63333`，看到 **解析器 →(produces) 文档模型 →(contains) 抽象语法树**。
 
+拖一拖节点、输一次搜索，然后 **关掉页面再打开**（或者把服务停掉重跑）：位置、缩放平移和搜索词都会回到你离开时的样子，底部会显示 `布局已保存 <时间>`。不想要这个记忆，按页头的 **重置布局**，或者启动时加 `--no-layout`。
+
 ### 2. 把知识图谱也放进同一个 Web UI
 
 ```powershell
@@ -75,7 +77,7 @@ python -m compiler --graph-json graph.json # Graph.to_dict() 的 JSON
 ### 3. 跑测试
 
 ```powershell
-python -m pytest -q        # 586 passed, 2 skipped
+python -m pytest -q        # 611 passed, 2 skipped
 ```
 
 （2 条 skip 分别是需要真实 `OPENAI_API_KEY` 的抽取测试和需要本机 Redis 的持久化测试。）
@@ -85,6 +87,7 @@ python -m pytest -q        # 586 passed, 2 skipped
 ```text
 usage: compiler [-h] [--kb FILE] [--graph-json FILE] [--host HOST]
                 [--port PORT] [--no-browser] [--check] [--json] [-q]
+                [--layout-dir DIR] [--no-layout]
                 [source]
 ```
 
@@ -99,6 +102,8 @@ usage: compiler [-h] [--kb FILE] [--graph-json FILE] [--host HOST]
 | `--check` | 只解析并报告节点/边数量，不起服务 |
 | `--json` | 把图打印成 JSON 后退出（可用于脚本） |
 | `-q, --quiet` | 只输出错误 |
+| `--layout-dir DIR` | Web UI 保存布局的位置，默认 `data/web-layout` |
+| `--no-layout` | 不保存 Web UI 布局，每次打开都是自动布局 |
 | `--redis-check` | 检查 Redis 的 RDB/AOF：损坏则隔离并准备 RDB 回退；不启动 Redis、不因持久化问题崩溃 |
 | `--redis-load KEY` | 从 Redis 读取 `KnowledgeBase`（替代文件输入） |
 | `--redis-save KEY` | 载入后把 Graph（以及 KnowledgeBase）写入 Redis |
@@ -118,7 +123,17 @@ hint: .lw files use Mermaid graph syntax, for example:
 
 ## Web UI
 
-`GET /` 返回单页界面，`GET /api/graph` 返回 `{nodes, edges, metadata}`，`GET /static/*` 返回静态资源，其余 404。服务只用标准库 `http.server`，图在启动时解析一次（改 `.lw` 后重新运行命令即可）。
+服务只用标准库 `http.server`，图在启动时解析一次（改 `.lw` 后重新运行命令即可）：
+
+| 路由 | 说明 |
+| --- | --- |
+| `GET /` | 单页界面 |
+| `GET /api/graph` | `{nodes, edges, metadata}` |
+| `GET /api/layout` | 保存的布局：`{positions, view, search, saved_at, persisted}` |
+| `POST /api/layout` | 写入布局；`{"reset": true}` 清空。非法 JSON 返回 400，超过 64 KiB 返回 413 |
+| `GET /static/*` | 静态资源 |
+
+其余路径 404。
 
 界面能力：
 
@@ -127,9 +142,32 @@ hint: .lw files use Mermaid graph syntax, for example:
 - 拖动节点、滚轮缩放、空白处平移
 - 点击节点查看详情（id、kind、来源行号、出边、入边）
 - 搜索框按 id / label 高亮并聚焦
+- 页头 **重置布局** 按钮：丢掉保存的位置，回到自动布局
 - 底部显示 `Nodes / Edges` 统计
 
-图形库（cytoscape.js + dagre）来自 CDN；**离线时**页面会自动降级成节点/边的文本列表，并在顶部提示。想完全离线，把三个 js 下载到 `compiler/web/static/` 并改 `index.html` 的引用即可。
+### 布局持久化
+
+**问题**：图是每次启动重新解析出来的，浏览器页面本身不记得你做过什么——拖完节点一刷新就回到 dagre 的自动布局。
+
+**做法**：页面把「你摆成什么样」通过 `POST /api/layout` 存到 `data/web-layout/<key>.json`（`--layout-dir` 换目录，`--no-layout` 关掉）：
+
+```json
+{
+  "version": 1,
+  "key": "698669964b747531",
+  "saved_at": "2026-09-17T21:31:53",
+  "positions": {"Parser": {"x": -19.75, "y": -14.4}},
+  "view": {"zoom": 2.6441, "pan": {"x": 190.22, "y": 234.07}},
+  "search": "Parser"
+}
+```
+
+- `key` 由图的来源路径 + 节点 id 算出，不同图不会串数据；图上没了的节点，它的旧位置会被丢弃。
+- 触发时机：拖完节点（`dragfree`）、缩放平移、改搜索词，合并成一次写入；关页面时再补一次（`keepalive`）。写入用「临时文件 + `os.replace`」，读到的永远是完整的旧文件或新文件。
+- 底部状态行会写 `布局已保存 <时间>`；`--no-layout` 时写「布局持久化已关闭」；写不进去（比如目录只读）会写「布局保存失败：…」，但页面照常能用。
+- 文件损坏或版本不认识时，重命名成 `<名字>.corrupt-<时间>` 挪开（**不删除**），当作「没有保存过布局」继续启动——和 Redis 的 AOF 处理同一套规矩。
+
+图形库（cytoscape.js + dagre + cytoscape-dagre）**已内置**在 `compiler/web/static/vendor/`，页面不访问外网：浏览器打不开外网、公司代理拦外部脚本都不影响。如果这三个文件被删掉，页面会自动降级成节点/边的文本列表并在顶部提示。布局引擎若一直不返回，3 秒后会自动 `fit()`，不会留下空画布。
 
 ## `.lw`：用 Mermaid 描述图
 
@@ -261,9 +299,9 @@ serve_graph(graph)                                  # http://127.0.0.1:63333
 ## 测试
 
 ```powershell
-python -m pytest -q                 # 539 passed, 1 skipped
+python -m pytest -q                 # 611 passed, 2 skipped
 python -m pytest tests/lw -q        # 只测 .lw / Mermaid 子集解析与适配
-python -m pytest tests/web -q       # 只测 Web 服务（GET / 与 /api/graph）
+python -m pytest tests/web -q       # 只测 Web 服务（/、/api/graph、/api/layout）
 python -m pytest tests/test_cli.py -q
 
 # 可选：真实模型集成测试（默认跳过）
@@ -293,13 +331,13 @@ compiler/
 │   ├── lint/         # Lint
 │   ├── lw/           # .lw = Mermaid 图源（解析 + 适配）
 │   ├── persistence/  # Redis RDB + AOF 自检、隔离、回退、RedisStore
-│   ├── web/          # 本地 Web 服务与 UI（static/）
+│   ├── web/          # 本地 Web 服务、UI 与布局持久化（server.py / layout.py / static/、static/vendor/）
 │   ├── cli.py        # 命令行
 │   └── __main__.py   # python -m compiler
 ├── examples/example.lw
 ├── redis/            # redis.conf + 持久化说明
 ├── scripts/          # redis-persistence.sh / .ps1
-├── tests/            # 586 passed, 2 skipped
+├── tests/            # 611 passed, 2 skipped
 └── requirements.txt
 ```
 
@@ -310,7 +348,8 @@ compiler/
 - 语义合并只解决实体/概念去重与事实/关系合并：没有别名桥接的跨语言同义、跨类型（entity ↔ concept）合并、事实措辞级去重都未实现。
 - Lint 只报告不修复；只检查链接目标存在性，不校验锚点。
 - `.lw` 只支持 Mermaid 的 Graph 子集，其余语法明确报错；没有热更新（改文件后重新运行命令）。
-- Web UI 的图形库走 CDN（离线自动降级为文本列表）。
+- Web UI 的图形库是内置的（`static/vendor/`，约 670 KB，cytoscape 3.30.2 / dagre 0.8.5 / cytoscape-dagre 2.5.0，均 MIT），页面本身不联网。
+- Web UI 的布局存在本机 `data/web-layout/`：换浏览器、换机器不会同步，也没有多用户概念。
 - 编码检测**优先中文编码**（UTF-8 / GB18030 / Big5）；其它旧编码请显式传 `encoding=`。
 - Redis 持久化需要本机/WSL 里有 `redis-server` 与 `redis-check-aof`；`tests/persistence/test_redis_live.py` 在没有 Redis 时会自动跳过。
 
@@ -319,6 +358,6 @@ compiler/
 - 文档流水线的 CLI（`python -m compiler notes.md --wiki --serve`）
 - `.lw` 与知识图谱的合并视图（两者本就是同一种 `Graph`）
 - 在应用启动流程中接入 `PersistenceManager.ensure()` 的自动报告（当前由 `--redis-check` 显式触发）
-- Web UI 热更新、导出 SVG/PNG、按 kind 上色
+- Web UI 热更新、导出 SVG/PNG、按 kind 上色；布局跨设备同步（目前是本机一份）
 - 更多 Mermaid 语法（`subgraph`、更多形状、`click`、样式）
 - 长文档分块抽取与跨块合并
